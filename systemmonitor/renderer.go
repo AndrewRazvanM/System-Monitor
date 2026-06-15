@@ -11,7 +11,8 @@ const (
     BRCorner = '┘'
 )
 
-// DrawWidget draws the borders for the Widget in a specific style.
+// DrawWidget draws the borders for the Widget in it's style.
+// Each widget stores it's own style.
 func (w Widget) DrawWidget(screen tcell.Screen) {
 	if !w.IsVisible {
 		return
@@ -43,6 +44,21 @@ func (w Widget) DrawWidget(screen tcell.Screen) {
 	}
 }
 
-func GetReady() {
-	
+func (w Widget) Render(screen tcell.Screen) {
+	for y := 0; y < w.Current.Height; y++ {
+		for x := 0; x < w.Current.Width; x++ {
+			cell := w.Current.Cells[y * w.Current.Width + x]
+			screen.SetContent(x + w.X + 1, y + w.Y + 1, cell.Rune, nil, tcell.StyleDefault)
+		}
+	}
+}
+
+func (w *Widget) Initalize(x, y, W, H int, title string) {
+	w.X, w.Y, w.W, w.H = x, y, W, H
+	w.IsVisible = true
+	w.Style = tcell.StyleDefault
+	w.Title = title
+	w.Current.Width = W - 2
+	w.Current.Height = H - 2
+	w.Current.Cells = make([]Cell, W * H)
 }

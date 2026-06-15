@@ -8,24 +8,30 @@ import (
 )
 
 func main() {
-	screen, err := tcell.NewScreen()
-	if err != nil {
-		fmt.Println("Ran into error when initializing the screen:\n", err)
+	screen, sErr := tcell.NewScreen()
+	if sErr != nil {
+		fmt.Println("error generating window")
 	}
-	if err := screen.Init(); err != nil {
-    fmt.Println(err)
-    return
-}
 
-	style := tcell.StyleDefault
-	tWidget := systemmonitor.Widget{
-    X: 2,
-    Y: 6,
-    W: 51,
-    H: 10,
-    IsVisible: true,
-    Style: style,
-	}	
-	tWidget.DrawWidget(screen)
+	initErr := screen.Init()
+	
+	if initErr != nil {
+		fmt.Println("error initializing screen ", initErr)
+	}
+	rawReadings := systemmonitor.CPUReading{}
+	widget := systemmonitor.Widget{}
+	widget.Initalize(5, 5, 51, 12, "CPU Dashboard")
+
+	err := rawReadings.GetReady()
+	if err != nil {
+		fmt.Println("Ran into an error:\n", err)
+	}
+	tErr := rawReadings.GetTemp()
+	if tErr != nil {
+		fmt.Println("Error getting temp readings:\n", tErr)
+	}
+	rawReadings.FormatReadings(&widget)
+	widget.DrawWidget(screen)
+	widget.Render(screen)
 	screen.Show()
 	}
