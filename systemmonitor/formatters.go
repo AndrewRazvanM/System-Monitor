@@ -1,15 +1,16 @@
 package systemmonitor
 
-import "fmt"
-
+import (
+	"fmt"
+)
 const (
 	cpuPadding = 3
 	cpuDegrees = "°C"
 )
 
-func (cr *CPUReading) FormatReadings() {
-	for core, rawTemp := range cr.RawTemp {
+func (cr *CPUReading) FormatReadings(widget Widget) {
+	for core, rawTemp := range cr.RawTemps {
 		tempDegrees := rawTemp / 1000
-		cr.FormattedTemp[core] = fmt.Sprintf("%*d %s", cpuPadding, tempDegrees, cpuDegrees)
+		widget.FormattedTemp[core] = fmt.Sprintf("%*d %s", cpuPadding, tempDegrees, cpuDegrees)
 	}
 }

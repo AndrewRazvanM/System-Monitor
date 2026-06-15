@@ -4,24 +4,28 @@ import (
 	"fmt"
 
 	"github.com/AndrewRazvanM/System-Monitor/systemmonitor"
+	"github.com/gdamore/tcell/v2"
 )
 
 func main() {
-	tempRead:= systemmonitor.CPUReading{}
-	err := tempRead.GetReady()
-	fmt.Println(tempRead.FilesDescriptor, err)
-
-	rErr := tempRead.GetTemp()
-	if rErr != nil {
-		fmt.Println("Error getting temp readings: ", rErr)
+	screen, err := tcell.NewScreen()
+	if err != nil {
+		fmt.Println("Ran into error when initializing the screen:\n", err)
 	}
-
-	errList := tempRead.Close()
-	fmt.Println("Errors: ", errList)
-
-	tempRead.FormatReadings()
-	fmt.Println("Printing CPU cores temperatures:")
-	for core, v := range tempRead.FormattedTemp {
-		fmt.Println(core, "\nTemp:", v)
-	}
+	if err := screen.Init(); err != nil {
+    fmt.Println(err)
+    return
 }
+
+	style := tcell.StyleDefault
+	tWidget := systemmonitor.Widget{
+    X: 2,
+    Y: 6,
+    W: 51,
+    H: 10,
+    IsVisible: true,
+    Style: style,
+	}	
+	tWidget.DrawWidget(screen)
+	screen.Show()
+	}

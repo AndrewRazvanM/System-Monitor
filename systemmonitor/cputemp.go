@@ -70,8 +70,7 @@ func (cr *CPUReading) Close() []error {
 func (cr *CPUReading) GetReady() error {
 	// create the maps
 	cr.FilesDescriptor = make(map[string]*os.File)
-	cr.RawTemp = make(map[string]int32)
-	cr.FormattedTemp = make(map[string]string)
+	cr.RawTemps = make(map[string]int32)
 
 	//check if any sensor are available. Get the folder path if it is
 	rootPath, err := cr.findFolder()
@@ -131,7 +130,7 @@ func (cr *CPUReading) GetTemp () error {
 			errorList = append(errorList, pErr)
 		}
 		//stores milidegress as int32
-		cr.RawTemp[core] = int32(value)
+		cr.RawTemps[core] = int32(value)
 	}
 	var err error
 	for _, v := range errorList {
