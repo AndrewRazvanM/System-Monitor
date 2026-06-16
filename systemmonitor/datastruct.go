@@ -39,8 +39,10 @@ type Cell struct {
 }
 
 // Snapshot stores the elements that will be rendered.
+// Each Snapshot is a 2D Grid mapped on a slice (1D).
 type Snapshot struct {
-	Width, Height int
+	// Slice of 2D positions (x,y). Basically mapping 2D to 1D:
+	// Cells[Index] := Y * W + X 
     Cells []Cell
 }
 
@@ -49,7 +51,7 @@ type Snapshot struct {
 type Widget struct {
 	//window positions 
 	X, Y int
-	//window size
+	// Width and Height of Widget
 	W, H int
 	//says if the widget should show or not
 	IsVisible bool
@@ -62,4 +64,12 @@ type Widget struct {
 	//stores snapshts to be used by the renderer and the content diff engine
 	Current  Snapshot
     Previous Snapshot
+}
+
+// StyleRange is used by the formater. It's used to tell the widget
+// what style to set for specific parts of the line.
+type StyleRange struct {
+    Start int
+    End   int
+    Style tcell.Style
 }

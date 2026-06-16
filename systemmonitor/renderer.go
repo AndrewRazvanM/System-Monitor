@@ -45,10 +45,50 @@ func (w Widget) DrawWidget(screen tcell.Screen) {
 }
 
 func (w Widget) Render(screen tcell.Screen) {
-	for y := 0; y < w.Current.Height; y++ {
-		for x := 0; x < w.Current.Width; x++ {
-			cell := w.Current.Cells[y * w.Current.Width + x]
+	for y := 0; y < w.H - 2; y++ {
+		for x := 0; x < w.W - 2; x++ {
+			cell := w.Current.Cells[y * (w.W - 2) + x]
 			screen.SetContent(x + w.X + 1, y + w.Y + 1, cell.Rune, nil, tcell.StyleDefault)
+		}
+	}
+}
+
+func (w *Widget) Setline(content []rune, line int,  ranges []StyleRange) {
+	width := w.W - 2
+	cellIndex := line * width
+	cLen := len(content)
+	rLen := len(ranges) 
+	
+
+	// if no style ranges are provided, build the content with default style.
+	if rLen == 0 {
+		for pos := 0; pos < width && pos < cLen; pos++ {
+			cell := &w.Current.Cells[cellIndex + pos]
+			cell.Rune = content[pos]
+			cell.Style = tcell.StyleDefault
+		}
+		return
+	}
+
+	rIndex := 0
+	r := ranges[rIndex]
+
+	for pos := 0; pos < width && pos < cLen; pos++ {
+
+		// advance range if needed
+		if rIndex < rLen - 1 && pos >= r.End {
+			rIndex++
+			r = ranges[rIndex]
+		}
+
+		cell := &w.Current.Cells[cellIndex + pos]
+		cell.Rune = content[pos]
+
+		// apply style if inside range
+		if rIndex < rLen && pos >= r.Start && pos < r.End {
+			cell.Style = r.Style
+		} else {
+			cell.Style = tcell.StyleDefault
 		}
 	}
 }
@@ -58,7 +98,5 @@ func (w *Widget) Initalize(x, y, W, H int, title string) {
 	w.IsVisible = true
 	w.Style = tcell.StyleDefault
 	w.Title = title
-	w.Current.Width = W - 2
-	w.Current.Height = H - 2
-	w.Current.Cells = make([]Cell, W * H)
+	w.Current.Cells = make([]Cell, (W - 2) * (H - 2))
 }

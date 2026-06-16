@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -52,7 +53,7 @@ func (cr CPUReading) findFolder() (string, error) {
 
 // Close goes over all open files and closes them.
 // All errors are captured and returned as a list. If no errors, the list is initialized with the 0 value.
-func (cr *CPUReading) Close() []error {
+func (cr *CPUReading) CloseFiles() []error {
 	err := []error{}
 	for _, v := range cr.FilesDescriptor {
 		error := v.Close()
@@ -84,11 +85,12 @@ func (cr *CPUReading) mapTempFiles(rootPath string) error {
 			if dError != nil {
 				return dError
 			}
-			//convert the data from bytes of ASCII number to int
+
+			//convert the data from bytes of ASCII number to string
 			strData := strings.TrimSpace(string(data))
-			//find the inde of the last space in the string -> create a slice from the string,
-			//starting from index + 1 -> convert this to an int64
-			label, intErr := strconv.ParseInt(strData[strings.LastIndex(strData, " ") + 1:], 10, 32)
+			//find the indeX of the last space in the string -> create a slice from the string,
+			//starting from index + 1 -> convert this to an int
+			label, intErr := strconv.Atoi(strData[strings.LastIndex(strData, " ") + 1:])
 			if intErr != nil {
 				return intErr
 			}
@@ -101,7 +103,7 @@ func (cr *CPUReading) mapTempFiles(rootPath string) error {
 				return iError
 			}
 			//convert label from int64 to int. 
-			cr.FilesDescriptor[int(label)] = FileDescriptor
+			cr.FilesDescriptor[label] = FileDescriptor
 		}
 	}
 	return nil
@@ -151,6 +153,33 @@ func (cr *CPUReading) GetReady() error {
 	// creates the map for CPU Topography
 	cr.CPUTopology = make(map[int][]int)
 
+	// check cpu topology
+	topErr := cr.getCPUTopology()
+	if topErr != nil {
+		return topErr
+	}
+	//sorted CPU Topology map by CPU Core Number
+	keys := make([]int, 0, len(cr.CPUTopology))
+
+	for k := range cr.CPUTopology {
+		keys = append(keys, k)
+	}
+	sort.Ints(keys)
+	
+	// build the RawReadings as a sorted slice of CORES -> Threads
+	for _, cpu := range keys {
+		threads := make([]ThreadInfo, len(cr.CPUTopology[cpu]))
+		for i, thread := range cr.CPUTopology[cpu] {
+			threads[i].CPU = thread
+		}
+		cr.RawReadings = append(cr.RawReadings, CoreInfo{
+			CoreID: cpu,
+			Temp: -1,
+			Threads: threads,
+
+		})
+	}
+
 	//check if any sensor are available. Get the folder path if it is
 	rootPath, fErr := cr.findFolder()
 	if fErr != nil {
@@ -160,10 +189,7 @@ func (cr *CPUReading) GetReady() error {
 	if tErr != nil {
 		return tErr
 	}
-	topErr := cr.getCPUTopology()
-	if topErr != nil {
-		return topErr
-	}
+
 	return nil
 }
 
@@ -171,25 +197,28 @@ func (cr *CPUReading) GetReady() error {
 // Mutates the existing struct.
 func (cr *CPUReading) GetTemp () error {
 	buff := make([]byte, 8)
-	errorList := make([]error, 0 , len(cr.FilesDescriptor))
-	for core, file := range cr.FilesDescriptor {
+	errorList := make([]error, 0 , len(cr.RawReadings))
+	for i, coreInfo := range cr.RawReadings {
+		file := cr.FilesDescriptor[coreInfo.CoreID]
 		fErr := resetOpenFile(file)
 		if fErr != nil {
 			errorList = append(errorList, fErr)
 			continue
 		} 
+
 		n, err := file.Read(buff)
 		if err != nil {
 			errorList = append(errorList, err)
 			continue
 		}
+
 		//converts the raw temp(ASCII output) to a string and then an int32
-		value, pErr := strconv.ParseInt(strings.TrimSpace(string(buff[:n])), 10, 32)
+		value, pErr := strconv.Atoi((strings.TrimSpace(string(buff[:n]))))
 		if pErr != nil {
 			errorList = append(errorList, pErr)
 		}
 		//stores milidegress as int32
-		cr.RawReadings = append(cr.RawReadings, CoreInfo{CoreID: core, Temp: int32(value)})
+		cr.RawReadings[i].Temp = int32(value)
 	}
 	var err error
 	for _, v := range errorList {

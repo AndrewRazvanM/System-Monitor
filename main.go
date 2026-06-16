@@ -20,7 +20,7 @@ func main() {
 	}
 	rawReadings := systemmonitor.CPUReading{}
 	widget := systemmonitor.Widget{}
-	widget.Initalize(5, 5, 51, 12, "CPU Dashboard")
+	widget.Initalize(5, 5, 50, 6, "CPU Dashboard")
 
 	err := rawReadings.GetReady()
 	if err != nil {
@@ -31,6 +31,7 @@ func main() {
 		fmt.Println("Error getting temp readings:\n", tErr)
 	}
 	rawReadings.FormatReadings(&widget)
+
 	widget.DrawWidget(screen)
 	widget.Render(screen)
 	screen.Show()
