@@ -1,6 +1,7 @@
 package systemmonitor
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -55,10 +56,10 @@ func (cr CPUReading) findFolder() (string, error) {
 // All errors are captured and returned as a list. If no errors, the list is initialized with the 0 value.
 func (cr *CPUReading) CloseFiles() []error {
 	err := []error{}
-	for _, v := range cr.FilesDescriptor {
-		error := v.Close()
+	for _, v := range cr.RawReadings {
+		error := v.File.Close()
 		if error != nil {
-			errorMsg := fmt.Sprintln("File ", v.Name(), " could not be closed. Error: ", error)
+			errorMsg := fmt.Sprintln("File ", v.File.Name(), " could not be closed. Error: ", error)
 			err = append(err, errors.New(errorMsg))
 		}
 	}
@@ -103,7 +104,7 @@ func (cr *CPUReading) mapTempFiles(rootPath string) error {
 				return iError
 			}
 			//convert label from int64 to int. 
-			cr.FilesDescriptor[label] = FileDescriptor
+			cr.RawReadings[label].File = FileDescriptor
 		}
 	}
 	return nil
@@ -142,22 +143,47 @@ func (cr *CPUReading) getCPUTopology() error {
 	return nil
 }
 
+func (cr *CPUReading) mapCPULoadFile() error {
+	rootPath := "/proc/stat"
+	file, err := os.Open(rootPath)
+	if err !=nil {
+		return errors.New("Error opening the /proc/stat file")
+	}
+	cr.StatFile = file
+	return nil
+}
+
 // GetReady discovers CPU temperature sensors and prepares
 // the file descriptors required to read temperature values.
 // The files are opened and cached.
 func (cr *CPUReading) GetReady() error {
-	// creates the map for file descriptors
-	cr.FilesDescriptor = make(map[int]*os.File)
 	// creates the map for the raw readings
 	cr.RawReadings = make([]CoreInfo, 0, 32)
-	// creates the map for CPU Topography
+	// creates the map for CPU Topology
 	cr.CPUTopology = make(map[int][]int)
+	// creates the map for the reverse CPU Topology
+	cr.rCPUTopology = make(map[int]int)
+
+
+	loadErr := cr.mapCPULoadFile()
+	if loadErr != nil {
+		return loadErr
+	}
 
 	// check cpu topology
 	topErr := cr.getCPUTopology()
 	if topErr != nil {
 		return topErr
 	}
+
+	//create a reverse CPU CPUTopology map used by the GetCPULoad(). It's a map[ThreadId]CoreID -> it maps threads to their physical cores
+	for physCoreID, threadList := range cr.CPUTopology {
+		for _, t := range threadList {
+			 cr.rCPUTopology[t] = physCoreID
+		}
+	}
+
+
 	//sorted CPU Topology map by CPU Core Number
 	keys := make([]int, 0, len(cr.CPUTopology))
 
@@ -167,13 +193,18 @@ func (cr *CPUReading) GetReady() error {
 	sort.Ints(keys)
 	
 	// build the RawReadings as a sorted slice of CORES -> Threads
-	for _, cpu := range keys {
-		threads := make([]ThreadInfo, len(cr.CPUTopology[cpu]))
-		for i, thread := range cr.CPUTopology[cpu] {
-			threads[i].CPU = thread
+	for _, core := range keys {
+		threads := make([]ThreadInfo, 0, len(cr.CPUTopology[core]))
+		for _, thread := range cr.CPUTopology[core] {
+			threads = append(threads, ThreadInfo{
+				CPU: thread,
+				})
 		}
+		sort.Slice(threads, func(i, j int) bool {
+			return threads[i].CPU < threads[j].CPU
+		})
 		cr.RawReadings = append(cr.RawReadings, CoreInfo{
-			CoreID: cpu,
+			CoreID: core,
 			Temp: -1,
 			Threads: threads,
 
@@ -199,7 +230,7 @@ func (cr *CPUReading) GetTemp () error {
 	buff := make([]byte, 8)
 	errorList := make([]error, 0 , len(cr.RawReadings))
 	for i, coreInfo := range cr.RawReadings {
-		file := cr.FilesDescriptor[coreInfo.CoreID]
+		file := coreInfo.File
 		fErr := resetOpenFile(file)
 		if fErr != nil {
 			errorList = append(errorList, fErr)
@@ -227,3 +258,162 @@ func (cr *CPUReading) GetTemp () error {
 	return err
 }
 
+// GetCPULoad get the load per thread and overall load on the cpu.
+// It matches this information with each physhical core.
+// It also assumes that the sysconf(_SC_CLK_TCK) = 100.
+func (cr *CPUReading) GetCPULoad () error {	
+
+	rErr := resetOpenFile(cr.StatFile)
+	if rErr != nil {
+		return errors.New(fmt.Sprintln("Error while resetting the stat file for the GetCPULoad:\n", rErr))
+	}
+	scanner := bufio.NewScanner(cr.StatFile)
+
+	//in the /proc/stat file, all CPU's are listed in order. Top being the aggregate one.
+	//using this to track which line corresponds to which CPU Thread
+	cpuID := -1
+
+	for scanner.Scan() {
+		//busyTime = user + nice + system + irq + softirq + steal + guest + guest_nice
+		var busyTime uint64 = 0
+		//total time = busyTime + iowait + idle
+		var totalTime uint64 = 0
+		var ok bool
+
+		line := scanner.Bytes()
+		busyTime, totalTime, ok = cr.parseStatFile(line)
+		if !ok {
+			break
+		}
+		
+		//this is the total for the sytem. It's an aggregate for all threads
+		if cpuID == -1 {
+			//calculates the deltas 
+			deltaBusy := float32(busyTime) - float32(cr.TotLoad.prevBusyTime)
+			deltaTotal := float32(totalTime) - float32(cr.TotLoad.prevTotTime)
+
+			//caches current readings
+			cr.TotLoad.prevTotTime = totalTime
+			cr.TotLoad.prevBusyTime = busyTime
+
+			//calculates the actual load
+			if deltaTotal > 0 {
+				cr.TotLoad.Load = deltaBusy / deltaTotal * 100
+			}
+			cpuID++
+			continue
+		}
+
+		//using the reverse CPU topology list to map the thread to the physical core
+		coreID := cr.rCPUTopology[cpuID]
+
+		//calculates the actual thread load
+		//assigns it directly to the correct thread
+		for i, v := range cr.RawReadings[coreID].Threads {
+			if v.CPU == cpuID {
+				//calculates the deltas 
+				deltaBusy := float32(busyTime) - float32(cr.RawReadings[coreID].Threads[i].prevBusy)
+				deltaTotal := float32(totalTime) - float32(cr.RawReadings[coreID].Threads[i].prevTotal)
+				cr.RawReadings[coreID].Threads[i].Load = deltaBusy / deltaTotal * 100
+				//caches current readings
+				cr.RawReadings[coreID].Threads[i].prevBusy = busyTime
+				cr.RawReadings[coreID].Threads[i].prevTotal = totalTime
+			}
+		}
+		cpuID++
+	}
+	sErr := scanner.Err()
+		if sErr != nil {
+			return errors.New(fmt.Sprintln("Error parsing stat file on line ", cpuID + 1, ". Error:\n", sErr))
+		} 
+		
+	return nil
+}
+
+//parseStatFile is a helper function to parse each line of the Stat file
+//only used by the GetCPULoad
+func (cr *CPUReading) parseStatFile (line []byte) (busy, total uint64, ok bool) {
+	if line[0] != 'c' || line [1] != 'p' || line [2] != 'u' {
+		return 0, 0, false
+	}
+
+	lineLen := len(line)
+	var (
+		i     int = 0
+		field int = 0
+		val   uint64 
+	)
+	busy = 0
+	total = 0
+
+	// helper: flush current value into correct slot
+	flush := func(v uint64, idx int) {
+		switch idx {
+		case 1: // user
+			busy += v
+			total += v
+		case 2: // nice
+			busy += v
+			total += v
+		case 3: // system
+			busy += v
+			total += v
+		case 4: // idle
+			total += v
+		case 5: // iowait
+			total += v
+		case 6: // irq
+			busy += v
+			total += v
+		case 7: // softirq
+			busy += v
+			total += v
+		case 8: // steal
+			busy += v
+			total += v
+		case 9: // guest
+			busy += v
+			total += v
+		case 10: // guest_nice
+			busy += v
+			total += v
+		}
+	}
+	//skip cpu
+	for i < lineLen && line[i] != ' ' {
+		i++
+	}
+	//skip the space
+	i++
+
+	//skip the spaces
+	for i < lineLen {
+		//skip the spaces
+		for i < lineLen && line[i] == ' '{
+			i++
+		}
+
+		if i >= lineLen {
+			break
+		}
+
+		field++
+		val = 0
+
+		//parse number
+		for i < lineLen && line[i] >= '0' && line[i] <= '9' {
+			//these are ASCII characters (digits) so they are stored as uints
+			// '0' is the ASCII character for the uint 48
+			// '9' is the ASCII character for the uint 57
+			// 57 - 48 = 9
+			val = val*10 + uint64(line[i] - '0')
+			i++
+		}
+
+		flush(val, field)
+	}
+
+	ok = field >= 8
+	return busy, total, ok
+
+}

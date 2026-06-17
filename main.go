@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/AndrewRazvanM/System-Monitor/systemmonitor"
 	"github.com/gdamore/tcell/v2"
@@ -15,16 +16,23 @@ func main() {
 
 	initErr := screen.Init()
 	
+	
 	if initErr != nil {
 		fmt.Println("error initializing screen ", initErr)
 	}
+	for {
 	rawReadings := systemmonitor.CPUReading{}
 	widget := systemmonitor.Widget{}
-	widget.Initalize(5, 5, 50, 6, "CPU Dashboard")
+	widget.Initalize(0, 0, 60, 15, "CPU Dashboard")
 
 	err := rawReadings.GetReady()
 	if err != nil {
 		fmt.Println("Ran into an error:\n", err)
+	}
+	
+	lErr := rawReadings.GetCPULoad()
+	if lErr != nil {
+		fmt.Print(lErr, "\n")
 	}
 	tErr := rawReadings.GetTemp()
 	if tErr != nil {
@@ -35,4 +43,6 @@ func main() {
 	widget.DrawWidget(screen)
 	widget.Render(screen)
 	screen.Show()
+	time.Sleep(100000000)
 	}
+}
