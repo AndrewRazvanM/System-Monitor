@@ -10,8 +10,8 @@ var StyleList = []tcell.Style{
 }
 
 const (
-	Green = 0
-	Yellow = 1
-	Red = 2
-	Standard = 3 // maps to tcell.StyleDefault
+	Green uint8 = 0
+	Yellow uint8 = 1
+	Red uint8 = 2
+	Standard uint8 = 3 // maps to tcell.StyleDefault
 )

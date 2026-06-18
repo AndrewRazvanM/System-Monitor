@@ -1,6 +1,8 @@
 package systemmonitor
 
 import (
+	"fmt"
+
 	tcell "github.com/gdamore/tcell/v2"
 )
 
@@ -52,8 +54,9 @@ func (w Widget) DrawWidget(screen tcell.Screen) {
 	}
 
 	//render the static elements on the dashboard
-	header := "CPU     Temp°C Load"
+	header := fmt.Sprintf("CPU %*s %*s", CpuPadding * 3 - 1, "Temp", CpuPadding * 2 - 1, "Load")
 	screen.PutStr(x0 + 1, y0 + 2, header)
+	screen.PutStr(x0 + w.W / 2, y0 + 2, header)
 }
 
 // Render adds the content into tcell's buffer.
@@ -71,52 +74,6 @@ func (w *Widget) Render(screen tcell.Screen) {
 			w.Previous.Cells[index] = cell
 		}	
 	}	
-}
-
-// UpdateLine adds 1 line at a time to the widget.Current.Cells buffer. It will truncate the line if it's too long.
-// It also assumes the caller overwrites the entire line.
-func (w *Widget) UpdateLine(content []rune, line int,  ranges []StyleRange) {
-	width := w.W - 2
-	cellIndex := line * width
-	cLen := len(content)
-	rLen := len(ranges)
-	maContentLen := len(w.Current.Cells)
-	
-
-	// if no style ranges are provided, build the content with default style.
-	if rLen == 0 {
-		for pos := 0; pos < width && pos < cLen; pos++ {
-			cell := &w.Current.Cells[cellIndex + pos]
-			cell.Rune = content[pos]
-			cell.Style = Standard
-		} 
-		return
-	}
-
-	rIndex := 0
-	r := ranges[rIndex]
-
-	for pos := 0; pos < width && pos < cLen; pos++ {
-		if cellIndex + pos >= maContentLen {
-			break
-		}
-		// advance range if needed
-		if rIndex < rLen - 1 && pos >= r.End {
-			rIndex++
-			r = ranges[rIndex]
-		}
-
-		cell := &w.Current.Cells[cellIndex + pos]
-		cell.Rune = content[pos]
-
-		// apply style if inside range
-		if rIndex < rLen && pos >= r.Start && pos < r.End {
-			cell.Style = r.Style
-		} else {
-			//tcell default style
-			cell.Style = Standard
-		}
-	}
 }
 
 //Updates a single cell, based on it's index.
@@ -139,4 +96,57 @@ func (w *Widget) Initalize(x, y, W, H int, title string) {
 	w.Title = title
 	w.Current.Cells = make([]Cell, (W - 2) * (H - 2))
 	w.Previous.Cells = make([]Cell, (W - 2) * (H - 2))
+}
+
+// writeText takes a list of runes and places it into the correct place in the Cells buffer.
+// It returns the number of cell that were written into. 
+// It also checks if the []rune is bigger than the buffer, if it is, it returns a 0.
+func (w *Widget) writeText(x, y int, text string, style uint8) (written int) {
+	cellIndex := y*(w.W-2) + x
+	max := len(w.Current.Cells)
+
+	for _, r := range text {
+		if cellIndex + written >= max {
+			break
+		}
+		w.Current.Cells[cellIndex + written] = Cell{
+			Rune:  r,
+			Style: style,
+		}
+		written++
+	}
+
+	return written
+}
+// writeBar writes a bar in the widget buffer, with the given character (barChar).
+// It also checks if the width will write outside the buffer, if it will, it returns a 0.
+func (w *Widget) writeBar(x, y int, width int, pct float64, style uint8) (cellsWritten int) {
+	cellIndex := y * (w.W - 2) + x
+	maxCellLen := len(w.Current.Cells)
+	
+	if cellIndex < 0 || cellIndex + width > maxCellLen {
+		return 0
+	}
+	filled := int(pct * float64(width) / 100.0)
+
+    for i := range width{
+		cell := w.Current.Cells[cellIndex + i]
+        c := '─'
+        s := Standard
+
+        if i < filled {
+            c = '━'
+			s = style
+        }
+
+		cell.Rune = c
+		cell.Style = s
+		w.Current.Cells[cellIndex + i] = cell
+
+    }
+	return width
+}
+
+func (w *Widget) fillRect(x, y, width, height int, char rune, style uint8,) {
+
 }

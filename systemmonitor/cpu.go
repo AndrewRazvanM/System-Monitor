@@ -289,8 +289,8 @@ func (cr *CPUReading) GetCPULoad () error {
 		//this is the total for the sytem. It's an aggregate for all threads
 		if cpuID == -1 {
 			//calculates the deltas 
-			deltaBusy := float32(busyTime) - float32(cr.TotLoad.prevBusyTime)
-			deltaTotal := float32(totalTime) - float32(cr.TotLoad.prevTotTime)
+			deltaBusy := float64(busyTime) - float64(cr.TotLoad.prevBusyTime)
+			deltaTotal := float64(totalTime) - float64(cr.TotLoad.prevTotTime)
 
 			//caches current readings
 			cr.TotLoad.prevTotTime = totalTime
@@ -298,7 +298,7 @@ func (cr *CPUReading) GetCPULoad () error {
 
 			//calculates the actual load
 			if deltaTotal > 0 {
-				cr.TotLoad.Load = deltaBusy / deltaTotal * 100
+				cr.TotLoad.Load = deltaBusy / deltaTotal * 100.0
 			}
 			cpuID++
 			continue
@@ -312,9 +312,13 @@ func (cr *CPUReading) GetCPULoad () error {
 		for i, v := range cr.RawReadings[coreID].Threads {
 			if v.CPU == cpuID {
 				//calculates the deltas 
-				deltaBusy := float32(busyTime) - float32(cr.RawReadings[coreID].Threads[i].prevBusy)
-				deltaTotal := float32(totalTime) - float32(cr.RawReadings[coreID].Threads[i].prevTotal)
-				cr.RawReadings[coreID].Threads[i].Load = deltaBusy / deltaTotal * 100
+				deltaBusy := float64(busyTime) - float64(cr.RawReadings[coreID].Threads[i].prevBusy)
+				deltaTotal := float64(totalTime) - float64(cr.RawReadings[coreID].Threads[i].prevTotal)
+
+				if deltaTotal > 0 {
+				cr.RawReadings[coreID].Threads[i].Load = deltaBusy / deltaTotal * 100.0
+				
+			}
 				//caches current readings
 				cr.RawReadings[coreID].Threads[i].prevBusy = busyTime
 				cr.RawReadings[coreID].Threads[i].prevTotal = totalTime
@@ -326,7 +330,7 @@ func (cr *CPUReading) GetCPULoad () error {
 		if sErr != nil {
 			return errors.New(fmt.Sprintln("Error parsing stat file on line ", cpuID + 1, ". Error:\n", sErr))
 		} 
-		
+
 	return nil
 }
 

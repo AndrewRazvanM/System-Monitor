@@ -5,7 +5,7 @@ import "os"
 //ThreadInfo is used to track the cpu load per Thread
 type ThreadInfo struct {
     CPU  int
-    Load float32
+    Load float64
 
 	//stores previous raw readings
 	//used to calculate the load
@@ -26,7 +26,7 @@ type CoreInfo struct {
 
 type AggregateLoad struct {
 	//Stores the total CPU load for the system
-	Load float32
+	Load float64
 	//Stores the previous time the CPU spent doing work.
 	//It's used to calculate the total Load delta
 	prevBusyTime uint64

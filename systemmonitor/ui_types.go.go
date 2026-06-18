@@ -18,27 +18,36 @@ type Snapshot struct {
 	// Cells[Index] := Y * W + X 
     Cells []Cell
 }
-
-
-
-// Widget stores the position and dimensions for 
-// each dashboard used by the renderer
-type Widget struct {
+// Geometry stores the pos on screen (x, y) and size (W, H)
+type Geometry struct {
 	//window positions 
 	X, Y int
 	// Width and Height of Widget
 	W, H int
-	//says if the widget should show or not
+}
+
+// Widget stores the position and dimensions for 
+// each dashboard used by the renderer
+type Widget struct {
+	//the Widget knows where it is, cause it knows where it isn't
+	//only the layout manager updates this
+	Geometry
+	//IsVisible says if the widget should show or not
 	IsVisible bool
-	//says if the widget needs to be redrawn
+	//Dirty says if the widget needs to be redrawn
 	Dirty bool
-	//stores the style used by tcell
+	//Style stores the style used by the widget
 	Style tcell.Style
-	//widget title
+	//Title contains the widget title
 	Title string
-	//stores snapshts to be used by the renderer and the content diff engine
+
+	//Current stores the current buffer used by the renderer
 	Current  Snapshot
+	//Previous stores the previous buffer, used to check if the content changed
     Previous Snapshot
+
+	//Formater takes the raw data and formats it into the correct position in the Current Snapshot
+	Formater func(*Widget)
 }
 
 // StyleRange is used by the formater. It's used to tell the widget
