@@ -188,7 +188,7 @@ func (cr *CPUReading) mapCPULoadFile() error {
 	rootPath := "/proc/stat"
 	file, err := os.Open(rootPath)
 	if err !=nil {
-		return errors.New("Error opening the /proc/stat file")
+		return fmt.Errorf("Error parsing the stat file: %v", err)
 	}
 	cr.StatFile = file
 	return nil

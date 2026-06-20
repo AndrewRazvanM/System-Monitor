@@ -17,9 +17,6 @@ const (
 	CpuPadding int = 3 
 	//this is the degrees symbol in ASCII - decimal
 	degreesSymbol rune = '°'
-	//it's where in the formated string the temp is listed. It's the len of
-	//"Core" + CpuPadding + " "
-	TempIndex int = len("CPU") + CpuPadding + 2
 )
 
 
@@ -170,7 +167,7 @@ func (cr *CPUReading) Compose(area ui.Geometry) []ui.DrawCommand {
 					Type:  ui.CommandRune,
 					X:     x0 + x,
 					Y:     y,
-					Data:  ui.Vline,
+					Data:  ui.VLine,
 					Style: ui.Blue,
 				})
 				x++

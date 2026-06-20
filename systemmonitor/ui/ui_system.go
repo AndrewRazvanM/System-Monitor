@@ -55,7 +55,7 @@ func (w Widget) Draw() []DrawCommand {
 		Y:     y0,
 		W:     1,
 		H:     y1 - y0,
-		Data:  Vline,
+		Data:  VLine,
 		Style: style,
 	})
 
@@ -65,7 +65,7 @@ func (w Widget) Draw() []DrawCommand {
 		Y:     y0,
 		W:     1,
 		H:     y1 - y0,
-		Data:  Vline,
+		Data:  VLine,
 		Style: style,
 	})
 

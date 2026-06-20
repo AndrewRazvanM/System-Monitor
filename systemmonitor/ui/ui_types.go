@@ -15,7 +15,6 @@ const (
 	Red uint8 = 2
 	Standard uint8 = 3 // maps to tcell.StyleDefault
 	Blue uint8 = 4
-	Vline rune =  '│'
 )
 
 // Geometry stores the pos on screen (x, y) and size (W, H)
@@ -53,5 +52,5 @@ type DrawCommand struct {
 }
 //used to build the layout for each widget. Does not handle global layout
 type Composer interface {
-	Compose()
+	Compose(area Geometry) []DrawCommand
 }
