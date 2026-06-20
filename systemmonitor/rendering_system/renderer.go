@@ -1,148 +1,166 @@
-package systemmonitor
+package renderingsystem
 
 import (
 	"fmt"
 
-	tcell "github.com/gdamore/tcell/v2"
+	ui "github.com/AndrewRazvanM/System-Monitor/systemmonitor/ui"
+	"github.com/gdamore/tcell/v2"
 )
 
-const (
-    HLine = '─'
-    VLine = '│'
-    TLCorner = '┌'
-    TRCorner = '┐'
-    BLCorner = '└'
-    BRCorner = '┘'
-)
-
-// DrawWidget draws the static elements of the Widget in it's style.
-// Each widget stores it's own style.
-func (w Widget) DrawWidget(screen tcell.Screen) {
-	if !w.IsVisible {
-		return
-	}
-	
-	x0 := w.X
-	y0 := w.Y
-	x1 := w.X + w.W - 1
-	y1 := w.Y + w.H - 1
-	xTitle := x0 + 1
-
-	style := w.Style
-
-	// corners
-	screen.SetContent(x0, y0, TLCorner, nil, style)
-	screen.SetContent(x1, y0, TRCorner, nil, style)
-	screen.SetContent(x0, y1, BLCorner, nil, style)
-	screen.SetContent(x1, y1, BRCorner, nil, style)
-
-	// top & bottom edges
-	for x := x0 + 1; x < x1; x++ {
-		screen.SetContent(x, y0, HLine, nil, style)
-		screen.SetContent(x, y1, HLine, nil, style)
-	}
-
-	// left & right edges
-	for y := y0 + 1; y < y1; y++ {
-		screen.SetContent(x0, y, VLine, nil, style)
-		screen.SetContent(x1, y, VLine, nil, style)
-	}
-
-	//render title
-	title := fmt.Sprintf("%c%s%c", TRCorner, w.Title, TLCorner)
-	for i, rune := range title {
-		screen.SetContent(xTitle + i, y0, rune, nil, w.Style.Bold(true) )
-	}
-
-}
-
-// Render adds the content into tcell's buffer.
-func (w *Widget) Render(screen tcell.Screen) {
-	for y := 0; y < w.H - 2; y++ {
-		for x := 0; x < w.W - 2; x++ {
-			index := y * (w.W - 2) + x
+// render copies all modified cells from the current snapshot to the underlying
+// tcell screen.
+//
+// Each cell in the current snapshot is compared against the corresponding cell
+// in the previous snapshot. Only cells that have changed are written to the
+// screen, minimizing terminal updates.
+//
+// After a cell is rendered, the previous snapshot is updated to match the
+// current snapshot. This method calls Screen.Show();
+func (sb *ScreenBuffer) Render() {
+	styles := StyleList
+	h := sb.Height
+	w := sb.Width
+	screen := sb.Screen
+	for y := range h {
+		for x := range w {
+			index := y * w + x
 			//render only if content is different
-			if w.Previous.Cells[index] == w.Current.Cells[index] {
+			if sb.Previous.Cells[index] == sb.Current.Cells[index] {
 				continue
 			}
-			cell := w.Current.Cells[index]
-			screen.SetContent(x + w.X + 1, y + w.Y + 1, cell.Rune, nil, StyleList[cell.Style])
+			cell := sb.Current.Cells[index]
+			screen.SetContent(x, y, cell.Rune, nil, styles[cell.Style])
 
-			w.Previous.Cells[index] = cell
+			sb.Previous.Cells[index] = cell
 		}	
-	}	
+	}
+	sb.Screen.Show()	
 }
 
-//Updates a single cell, based on it's index.
-//Does not write outside the widget buffer.
-func (w *Widget) UpdateCell(x, y int, char rune, style uint8) {
-	index := y * (w.W - 2) + x
-	if index < 0 || index >= len(w.Current.Cells) {
+//Processes commands issued by the composers. Needs to be called before Render()
+func (sb *ScreenBuffer) ProcessCmds(cmds []ui.DrawCommand) {
+    for _, c := range cmds {
+        switch c.Type {
+
+        case ui.CommandText:
+            sb.writeRunes(
+                c.X,
+                c.Y,
+                []rune(c.Data.(string)),
+                c.Style,
+            )
+
+        case ui.CommandFill:
+            sb.fillRect(
+                c.X,
+                c.Y,
+                c.W,
+                c.H,
+                c.Data.(rune),
+                c.Style,
+            )
+
+        case ui.CommandRune:
+            sb.setCell(
+                c.X,
+                c.Y,
+                c.Data.(rune),
+                c.Style,
+            )
+        }
+    }
+}
+// UpdateCell writes a single cell at absolute (x, y).
+func (sb *ScreenBuffer) setCell(x, y int, r rune, style uint8) {
+	if x < 0 || y < 0 || x >= sb.Width || y >= sb.Height {
 		return
 	}
-
-	w.Current.Cells[index].Rune = char
-	w.Current.Cells[index].Style = style
-
+	index := y*sb.Width + x
+	sb.Current.Cells[index].Rune = r
+	sb.Current.Cells[index].Style = style
 }
 
-func (w *Widget) Initalize(x, y, W, H int, title string, style uint8) {
-	w.X, w.Y, w.W, w.H = x, y, W, H
-	w.IsVisible = true
-	w.Style = StyleList[style]
-	w.Title = title
-	w.Current.Cells = make([]Cell, (W - 2) * (H - 2))
-	w.Previous.Cells = make([]Cell, (W - 2) * (H - 2))
+func (sb *ScreenBuffer) writeRunes(x, y int, runes []rune, style uint8) (written int) {
+	if x < 0 || y < 0 || y >= sb.Height || x >= sb.Width {
+		return 0
+	}
+
+	max := min(len(runes), sb.Width - x)
+
+	index := y*sb.Width + x
+	cells := sb.Current.Cells
+
+	for i := range max {
+		cells[index+i].Rune = runes[i]
+		cells[index+i].Style = style
+	}
+
+	return max
 }
 
-// writeText takes a list of runes and places it into the correct place in the Cells buffer.
-// It returns the number of cell that were written into. 
-// It also checks if the []rune is bigger than the buffer, if it is, it returns a 0.
-func (w *Widget) writeText(x, y int, text string, style uint8) (written int) {
-	cellIndex := y*(w.W-2) + x
-	max := len(w.Current.Cells)
+func (sb *ScreenBuffer) fillRect(x, y, w, h int, r rune, style uint8) (written int) {
+	if w <= 0 || h <= 0 {
+		return 0
+	}
 
-	for _, r := range text {
-		if cellIndex + written >= max {
-			break
+	if x < 0 || y < 0 {
+		return 0
+	}
+
+	if x >= sb.Width || y >= sb.Height {
+		return 0
+	}
+
+	if x+w > sb.Width {
+		w = sb.Width - x
+	}
+
+	if y+h > sb.Height {
+		h = sb.Height - y
+	}
+
+	cells := sb.Current.Cells
+	screenW := sb.Width
+
+	for row := 0; row < h; row++ {
+		base := (y+row)*screenW + x
+
+		for col := 0; col < w; col++ {
+			cells[base+col].Rune = r
+			cells[base+col].Style = style
+			written++
 		}
-
-		w.Current.Cells[cellIndex + written].Rune = r
-		w.Current.Cells[cellIndex + written].Style = style
-		written++
 	}
 
 	return written
 }
-// writeBar writes a bar in the widget buffer, with the given character (barChar).
-// It also checks if the width will write outside the buffer, if it will, it returns a 0.
-func (w *Widget) writeBar(x, y int, width int, pct float64, style uint8) (cellsWritten int) {
-	cellIndex := y * (w.W - 2) + x
-	maxCellLen := len(w.Current.Cells)
-	
-	if cellIndex < 0 || cellIndex + width > maxCellLen {
-		return 0
+
+func (sb *ScreenBuffer) Clear(r rune, style uint8) {
+	cells := sb.Current.Cells
+
+	for i := range cells {
+		cells[i].Rune = r
+		cells[i].Style = style
 	}
-	filled := int(pct * float64(width) / 100.0)
-
-    for i := range width{
-		cell := w.Current.Cells[cellIndex + i]
-        c := '─'
-        s := Standard
-
-        if i < filled {
-            c = '━'
-			s = style
-        }
-
-		cell.Rune = c
-		cell.Style = s
-		w.Current.Cells[cellIndex + i] = cell
-
-    }
-	return width
 }
 
-func (w *Widget) fillRect(x, y, width, height int, char rune, style uint8,) {
+func (sb *ScreenBuffer) Init(isVisible bool, style uint8) error {
+	sb.IsVisible = isVisible
+	screen, sErr := tcell.NewScreen()
+	if sErr != nil {
+		return fmt.Errorf("Error creating window: %v", sErr)
+	}
 
+	initError := screen.Init()
+	if initError != nil {
+		return fmt.Errorf("Error initializing window: %v", sErr)
+	}
+	sb.Screen = screen
+	width, height := screen.Size()
+	sb.Current.Cells = make([]Cell, width * height)
+	sb.Previous.Cells = make([]Cell, width * height)
+	sb.Height = height
+	sb.Width = width
+
+	return nil
 }

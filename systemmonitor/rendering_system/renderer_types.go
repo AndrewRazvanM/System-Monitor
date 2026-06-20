@@ -1,10 +1,21 @@
 package renderingsystem
 
+import "github.com/gdamore/tcell/v2"
+
+//ScreenBuffer is the entire screen
 type ScreenBuffer struct {
+	//Holds current buffer
 	Current Snapshot
+	//Holds previous buffer
 	Previous Snapshot
-	Width uint16
-	Height uint16
+	//Width of the screen
+	Width int
+	//Height of the screen
+	Height int
+	//Holds the screen that's associated with this buffer
+	Screen tcell.Screen
+	//Might have multiple screens in the future
+	IsVisible bool
 }
 
 // Cell stores the actual character (element) that will be rendered.

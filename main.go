@@ -4,24 +4,19 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/AndrewRazvanM/System-Monitor/systemmonitor"
-	"github.com/gdamore/tcell/v2"
+	cpupipeline "github.com/AndrewRazvanM/System-Monitor/systemmonitor/cpu_pipeline"
+	renderingsystem "github.com/AndrewRazvanM/System-Monitor/systemmonitor/rendering_system"
+	ui "github.com/AndrewRazvanM/System-Monitor/systemmonitor/ui"
 )
 
 func main() {
-	screen, sErr := tcell.NewScreen()
-	if sErr != nil {
-		fmt.Println("error generating window")
-	}
-
-	initErr := screen.Init()
-	if initErr != nil {
-		fmt.Println("error initializing screen ", initErr)
-	}
-	
-	rawReadings := systemmonitor.CPUReading{}
-	widget := systemmonitor.Widget{}
-	widget.Initalize(0, 0, 50, 12, "CPU Dashboard", 4)
+	Buffer := renderingsystem.ScreenBuffer{}
+	Buffer.Init(true, 4)
+	rawReadings := cpupipeline.CPUReading{}
+	widget := ui.Widget{}
+	widget.Initalize(10, 3, 100, 12, "CPU Dashboard", 4)
+	widgetCmds := widget.Draw()
+	Buffer.ProcessCmds(widgetCmds)
 
 	err := rawReadings.GetReady()
 	if err != nil {
@@ -37,11 +32,11 @@ func main() {
 	if tErr != nil {
 		fmt.Println("Error getting temp readings:\n", tErr)
 	}
-	rawReadings.UpdateBuffer(&widget)
+	
+	renderCommands := rawReadings.Compose(widget.Geometry)
 
-	widget.DrawWidget(screen)
-	widget.Render(screen)
-	screen.Show()
+	Buffer.ProcessCmds(renderCommands)
+	Buffer.Render()
 	time.Sleep(1000000000)
 	}
 }

@@ -1,4 +1,4 @@
-package systemmonitor
+package cpupipeline
 
 import "os"
 
