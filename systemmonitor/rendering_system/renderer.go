@@ -49,14 +49,11 @@ func (w Widget) DrawWidget(screen tcell.Screen) {
 	}
 
 	//render title
-	for i, rune := range w.Title {
+	title := fmt.Sprintf("%c%s%c", TRCorner, w.Title, TLCorner)
+	for i, rune := range title {
 		screen.SetContent(xTitle + i, y0, rune, nil, w.Style.Bold(true) )
 	}
 
-	//render the static elements on the dashboard
-	header := fmt.Sprintf("CPU %*s %*s", CpuPadding * 3 - 1, "Temp", CpuPadding * 2 - 1, "Load")
-	screen.PutStr(x0 + 1, y0 + 2, header)
-	screen.PutStr(x0 + w.W / 2, y0 + 2, header)
 }
 
 // Render adds the content into tcell's buffer.
@@ -78,8 +75,8 @@ func (w *Widget) Render(screen tcell.Screen) {
 
 //Updates a single cell, based on it's index.
 //Does not write outside the widget buffer.
-func (w *Widget) UpdateCell(index int, char rune, style uint8) {
-
+func (w *Widget) UpdateCell(x, y int, char rune, style uint8) {
+	index := y * (w.W - 2) + x
 	if index < 0 || index >= len(w.Current.Cells) {
 		return
 	}
@@ -89,10 +86,10 @@ func (w *Widget) UpdateCell(index int, char rune, style uint8) {
 
 }
 
-func (w *Widget) Initalize(x, y, W, H int, title string) {
+func (w *Widget) Initalize(x, y, W, H int, title string, style uint8) {
 	w.X, w.Y, w.W, w.H = x, y, W, H
 	w.IsVisible = true
-	w.Style = tcell.StyleDefault
+	w.Style = StyleList[style]
 	w.Title = title
 	w.Current.Cells = make([]Cell, (W - 2) * (H - 2))
 	w.Previous.Cells = make([]Cell, (W - 2) * (H - 2))
@@ -109,10 +106,9 @@ func (w *Widget) writeText(x, y int, text string, style uint8) (written int) {
 		if cellIndex + written >= max {
 			break
 		}
-		w.Current.Cells[cellIndex + written] = Cell{
-			Rune:  r,
-			Style: style,
-		}
+
+		w.Current.Cells[cellIndex + written].Rune = r
+		w.Current.Cells[cellIndex + written].Style = style
 		written++
 	}
 

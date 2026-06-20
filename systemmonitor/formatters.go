@@ -8,7 +8,6 @@ const (
 	CpuPadding int = 3 
 	//this is the degrees symbol in ASCII - decimal
 	degreesSymbol rune = '°'
-	headerPadding int = 2
 	//it's where in the formated string the temp is listed. It's the len of
 	//"Core" + CpuPadding + " "
 	TempIndex int = len("CPU") + CpuPadding + 2
@@ -17,8 +16,38 @@ const (
 // The formated values are sent to the Widget that's passed into it. 
 func (cr *CPUReading) UpdateBuffer(cpuWidget *Widget) {
 	
-	line := 0 + headerPadding
-	maxLine := cpuWidget.H - line - 1
+	line := 0
+	maxLine := cpuWidget.H - line - 2
+
+	//This is the aggregate load style
+	aLoadStyle := Standard
+			switch {
+			case cr.TotLoad.Load < 50:
+				aLoadStyle = Green
+			case cr.TotLoad.Load< 90:
+				aLoadStyle = Yellow
+			case cr.TotLoad.Load >= 90:
+				aLoadStyle = Red
+			}
+
+	//This is the aggregated temp syle
+	aTempStyle := Standard
+			switch {
+			case cr.TotLoad.Load < 50:
+				aTempStyle = Green
+			case cr.TotLoad.Load< 90:
+				aTempStyle = Yellow
+			case cr.TotLoad.Load >= 90:
+				aTempStyle = Red
+			}
+
+	//This is the aggregated temp syle 
+	n := cpuWidget.writeText(0 , maxLine - 1, "CPU", Standard)
+	n += cpuWidget.writeText(n, maxLine - 1, fmt.Sprintf("%*d", CpuPadding, cr.TotLoad.Temp), aTempStyle) 
+	n += cpuWidget.writeText(n, maxLine - 1, "°C ", Standard)
+	n += cpuWidget.writeText(n, maxLine - 1, fmt.Sprintf("%*.1f%c", CpuPadding + 2, cr.TotLoad.Load, '%'), aLoadStyle)
+	aggregateBarWidth := cpuWidget.W - 2 - n - 1
+	n += cpuWidget.writeBar(n, maxLine - 1, aggregateBarWidth, cr.TotLoad.Load, aLoadStyle)
 
 	//assuming all cores have the same number of thread -> get the max number of threads for core 0. Use that to calculate
 	//the maximum available width for each thread.
@@ -50,20 +79,25 @@ func (cr *CPUReading) UpdateBuffer(cpuWidget *Widget) {
 				loadStyle = Green
 			case thread.Load < 90:
 				loadStyle = Yellow
-			default:
+			case thread.Load >= 90:
 				loadStyle = Red
 			}
 			//tracks the position X in the line
 			lineX := availWidth * threadNum
 			x := cpuWidget.writeText(lineX , line, "CPU", Standard)
 			x += cpuWidget.writeText(lineX + x, line, fmt.Sprintf("%*d", CpuPadding, thread.CPU), Standard)
-			x += cpuWidget.writeText(lineX + x, line, fmt.Sprintf("%*d°C", CpuPadding, tempDegrees), tempStyle)
+			x += cpuWidget.writeText(lineX + x, line, fmt.Sprintf("%*d", CpuPadding, tempDegrees), tempStyle)
+			x += cpuWidget.writeText(lineX + x, line, "°C", Standard)
 			x += cpuWidget.writeText(lineX + x, line, fmt.Sprintf("%*.1f%c", CpuPadding + 2, thread.Load, '%'), loadStyle)
 			barWidth := availWidth - x - 1
 			x += cpuWidget.writeBar(lineX + x, line, barWidth, thread.Load, loadStyle)
+			if threadNum >= numOfMaxThreads - 1 {
+				continue
+			}
+			cpuWidget.UpdateCell(lineX + x, line, VLine, 4)
 		}
 		line++
-		if line >= maxLine {
+		if line >= maxLine - 1 {
 				break
 		}
 	}

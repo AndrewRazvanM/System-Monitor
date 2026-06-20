@@ -15,19 +15,19 @@ func main() {
 	}
 
 	initErr := screen.Init()
+	if initErr != nil {
+		fmt.Println("error initializing screen ", initErr)
+	}
 	
 	rawReadings := systemmonitor.CPUReading{}
 	widget := systemmonitor.Widget{}
-	widget.Initalize(0, 0, 50, 12, "CPU Dashboard")
+	widget.Initalize(0, 0, 50, 12, "CPU Dashboard", 4)
 
 	err := rawReadings.GetReady()
 	if err != nil {
 		fmt.Println("Ran into an error:\n", err)
 	}
 	
-	if initErr != nil {
-		fmt.Println("error initializing screen ", initErr)
-	}
 	for {
 	lErr := rawReadings.GetCPULoad()
 	if lErr != nil {

@@ -17,7 +17,7 @@ import (
 func resetOpenFile (file *os.File) error {
 	_, err := file.Seek(0, io.SeekStart)
 	if err != nil {
-		return err
+		return errors.New(fmt.Sprintln("Cannot parse: ", file))
 	}
 	return nil
 }
@@ -71,42 +71,83 @@ func (cr *CPUReading) CloseFiles() []error {
 // It creates a map with the label (key) and the open file (element).
 // Each time new readings are needed, the stored files are looped over.
 func (cr *CPUReading) mapTempFiles(rootPath string) error {
-	fileList, rError := os.ReadDir(rootPath)
-	if rError != nil {
-		return rError
+	fileList, err := os.ReadDir(rootPath)
+	if err != nil {
+		return err
 	}
-	
+
 	for _, v := range fileList {
-		//get the label name
 		fileName := v.Name()
-		//add open files to CpuReading.FileDescriptors
-		if strings.Contains(fileName, "temp") && strings.Contains(fileName, "label") {
-			labelPath := filepath.Join(rootPath, fileName)
-			data, dError := os.ReadFile(labelPath)
-			if dError != nil {
-				return dError
-			}
 
-			//convert the data from bytes of ASCII number to string
-			strData := strings.TrimSpace(string(data))
-			//find the indeX of the last space in the string -> create a slice from the string,
-			//starting from index + 1 -> convert this to an int
-			label, intErr := strconv.Atoi(strData[strings.LastIndex(strData, " ") + 1:])
-			if intErr != nil {
-				return intErr
-			}
-
-			//check for the input file -> it contains the raw temp 
-			inputStr := strings.TrimSuffix(fileName, "label") + "input"
-			inputPath := filepath.Join(rootPath, inputStr)
-			FileDescriptor, iError := os.Open(inputPath)
-			if iError != nil {
-				return iError
-			}
-			//convert label from int64 to int. 
-			cr.RawReadings[label].File = FileDescriptor
+		if !strings.HasPrefix(fileName, "temp") || !strings.HasSuffix(fileName, "_label") {
+			continue
 		}
+
+		labelPath := filepath.Join(rootPath, fileName)
+
+		data, err := os.ReadFile(labelPath)
+		if err != nil {
+			return err
+		}
+
+		label := strings.TrimSpace(string(data))
+
+		// build matching input filename
+		inputFile := strings.TrimSuffix(fileName, "_label") + "_input"
+		inputPath := filepath.Join(rootPath, inputFile)
+
+		fd, err := os.Open(inputPath)
+		if err != nil {
+			return err
+		}
+
+		// ----------------------------
+		// Package / Die temperature
+		// ----------------------------
+		switch {
+		// AMD main CPU temp
+		case label == "Tdie":
+			cr.TotLoad.TempFile = fd
+			continue
+
+		// AMD fallback (used for fan control)
+		case label == "Tctl":
+			if cr.TotLoad.TempFile == nil {
+				cr.TotLoad.TempFile = fd
+			}
+			continue
+
+		// Intel package-level temperature
+		case strings.HasPrefix(label, "Package id"):
+			cr.TotLoad.TempFile = fd
+			continue
+		}
+
+		// ----------------------------
+		// Optional per-core sensors
+		// ONLY if they exist (Intel edge case)
+		// ----------------------------
+		if strings.HasPrefix(label, "Core ") {
+			// extract numeric suffix safely
+			nStr := strings.TrimPrefix(label, "Core ")
+			n, err := strconv.Atoi(nStr)
+			if err == nil {
+				// ensure slice is large enough
+				if n >= len(cr.RawReadings) {
+					newSlice := make([]CoreInfo, n+1)
+					copy(newSlice, cr.RawReadings)
+					cr.RawReadings = newSlice
+				}
+
+				cr.RawReadings[n].File = fd
+			}
+			continue
+		}
+
+		// ignore everything else (CCD, unknown sensors, etc.)
+		_ = label
 	}
+
 	return nil
 }
 
@@ -233,7 +274,7 @@ func (cr *CPUReading) GetTemp () error {
 		file := coreInfo.File
 		fErr := resetOpenFile(file)
 		if fErr != nil {
-			errorList = append(errorList, fErr)
+			errorList = append(errorList, errors.New(fmt.Sprintln("Core ", coreInfo.CoreID, "generated error: ", fErr)))
 			continue
 		} 
 
@@ -337,7 +378,7 @@ func (cr *CPUReading) GetCPULoad () error {
 //parseStatFile is a helper function to parse each line of the Stat file
 //only used by the GetCPULoad
 func (cr *CPUReading) parseStatFile (line []byte) (busy, total uint64, ok bool) {
-	if line[0] != 'c' || line [1] != 'p' || line [2] != 'u' {
+	if line[0] != 'c' || line[1] != 'p' || line[2] != 'u' {
 		return 0, 0, false
 	}
 

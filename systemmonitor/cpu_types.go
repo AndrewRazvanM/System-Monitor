@@ -24,21 +24,25 @@ type CoreInfo struct {
 	File *os.File
 }
 
-type AggregateLoad struct {
+type Aggregated struct {
 	//Stores the total CPU load for the system
 	Load float64
+	//Stores the temperature of the CPU die
+	Temp int32
 	//Stores the previous time the CPU spent doing work.
 	//It's used to calculate the total Load delta
 	prevBusyTime uint64
 	//Stores the previous time the CPU spent doing work + time spent idle.
 	//It's used to calculate the total Load delta
 	prevTotTime uint64
+	//Stores the aggregate temp file
+	TempFile *os.File 
 }
 
 // CPUReading store the CoreInfo and caches the file handlers.
 type CPUReading struct {
-		//Store the load for the whole system and the values used to calculate it.
-		TotLoad AggregateLoad
+		//Store the load and temp for the whole system and the values used to calculate it.
+		TotLoad Aggregated
 
 		//Store degress for eac core
 		RawReadings []CoreInfo
