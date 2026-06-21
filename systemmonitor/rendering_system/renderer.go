@@ -47,7 +47,7 @@ func (sb *ScreenBuffer) ProcessCmds(cmds []ui.DrawCommand) {
             sb.writeRunes(
                 c.X,
                 c.Y,
-                []rune(c.Text),
+                c.Text,
                 c.Style,
 				c.Attr,
             )
@@ -149,6 +149,15 @@ func (sb *ScreenBuffer) Clear(r rune, style ui.Color) {
 		cells[i].Rune = r
 		cells[i].Style = style
 	}
+}
+
+func (sb *ScreenBuffer) Resize(){
+	sb.Screen.Sync()
+	width, height := sb.Screen.Size()
+	sb.Current.Cells = make([]Cell, width * height)
+	sb.Previous.Cells = make([]Cell, width * height)
+	sb.Height = height
+	sb.Width = width
 }
 
 func (sb *ScreenBuffer) Init(isVisible bool, style ui.Color) error {

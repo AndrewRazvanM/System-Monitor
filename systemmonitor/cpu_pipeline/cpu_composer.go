@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"unicode/utf8"
 
+	layoutmanager "github.com/AndrewRazvanM/System-Monitor/systemmonitor/layout_manager"
 	ui "github.com/AndrewRazvanM/System-Monitor/systemmonitor/ui"
 )
 
@@ -21,7 +22,7 @@ const (
 )
 
 
-func (cr *CPUReading) Compose(area ui.Geometry) []ui.DrawCommand {
+func (cr *CPUReading) Compose(area layoutmanager.Geometry) []ui.DrawCommand {
 	if len(cr.RawReadings) == 0 {
 		return nil
 	}
@@ -57,7 +58,7 @@ func (cr *CPUReading) Compose(area ui.Geometry) []ui.DrawCommand {
 			Type:  ui.CommandText,
 			X:     x0 + x,
 			Y:     aggY,
-			Text:  "CPU ",
+			Text:  []rune("CPU "),
 			Style: ui.Standard,
 		},
 	)
@@ -68,12 +69,12 @@ func (cr *CPUReading) Compose(area ui.Geometry) []ui.DrawCommand {
 		Type:  ui.CommandText,
 		X:     x0 + x,
 		Y:     aggY,
-		Text:  tempStr,
+		Text:  []rune(tempStr),
 		Style: tempStyle,
 	})
 	x += utf8.RuneCountInString(tempStr)
 
-	loadStr := fmt.Sprintf("%*.1f%%", CpuPadding+2, cr.TotLoad.Load)
+	loadStr := []rune(fmt.Sprintf("%*.1f%%", CpuPadding+2, cr.TotLoad.Load))
 	cmds = append(cmds, ui.DrawCommand{
 		Type:  ui.CommandText,
 		X:     x0 + x,
@@ -81,7 +82,7 @@ func (cr *CPUReading) Compose(area ui.Geometry) []ui.DrawCommand {
 		Text:  loadStr,
 		Style: loadStyle,
 	})
-	x += utf8.RuneCountInString(loadStr)
+	x += len(loadStr)
 
 	cmds = append(cmds, ui.DrawCommand{
 		Type:  ui.CommandFill,
@@ -111,9 +112,9 @@ func (cr *CPUReading) Compose(area ui.Geometry) []ui.DrawCommand {
 
 			loadStyle := cpuLoadStyle(thread.Load)
 
-			cpuStr := fmt.Sprintf("%-*d", CpuPadding, thread.CPU)
-			tempStr := fmt.Sprintf("%*d°C", CpuPadding, tempDeg)
-			loadStr := fmt.Sprintf("%*.1f%%", CpuPadding+2, thread.Load)
+			cpuStr := []rune(fmt.Sprintf("%-*d", CpuPadding, thread.CPU))
+			tempStr := []rune(fmt.Sprintf("%*d°C", CpuPadding, tempDeg))
+			loadStr := []rune(fmt.Sprintf("%*.1f%%", CpuPadding+2, thread.Load))
 
 			cmds = append(cmds,
 				ui.DrawCommand{
@@ -124,7 +125,7 @@ func (cr *CPUReading) Compose(area ui.Geometry) []ui.DrawCommand {
 					Style: ui.Standard,
 				},
 			)
-			x += utf8.RuneCountInString(cpuStr)
+			x += len(cpuStr)
 
 			cmds = append(cmds,
 				ui.DrawCommand{
@@ -135,7 +136,7 @@ func (cr *CPUReading) Compose(area ui.Geometry) []ui.DrawCommand {
 					Style: coreTempStyle,
 				},
 			)
-			x += utf8.RuneCountInString(tempStr)
+			x += len(tempStr)
 
 			cmds = append(cmds,
 				ui.DrawCommand{
@@ -146,7 +147,7 @@ func (cr *CPUReading) Compose(area ui.Geometry) []ui.DrawCommand {
 					Style: loadStyle,
 				},
 			)
-			x += utf8.RuneCountInString(loadStr)
+			x += len(loadStr)
 
 			barWidth := (maxBarWidth * (j + 1)) - x
 

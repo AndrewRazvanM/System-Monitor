@@ -1,5 +1,9 @@
 package ui
 
+import (
+	layoutmanager "github.com/AndrewRazvanM/System-Monitor/systemmonitor/layout_manager"
+)
+
 const (
     HLine = '─'
     VLine = '│'
@@ -9,11 +13,10 @@ const (
     BRCorner rune = '┘'
 )
 
-func (w *Widget) Initalize(x, y, W, H int, title string, style Color) {
-	w.X, w.Y, w.W, w.H = x, y, W, H
-	w.IsVisible = true
+func (w *Widget) SetAttributes(title string, style Color) {
 	w.Style = style
-	w.Title = "┐" + title + "┌"
+	titleStr := "┐" + title + "┌"
+	w.Title = []rune(titleStr)
 }
 
 func (w Widget) Draw() []DrawCommand {
@@ -118,4 +121,10 @@ func (w Widget) Draw() []DrawCommand {
 	})
 
 	return renderCmds
+}
+
+func (w *Widget) UpdatePos(g layoutmanager.Geometry, isVisible bool) {
+	w.Geometry = g
+	w.IsVisible = isVisible
+	w.Dirty = true
 }
