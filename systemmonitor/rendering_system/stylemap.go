@@ -1,12 +1,21 @@
 package renderingsystem
 
-import "github.com/gdamore/tcell/v2"
+import (
+	"github.com/AndrewRazvanM/System-Monitor/systemmonitor/ui"
+	"github.com/gdamore/tcell/v2"
+)
 
-var StyleList = []tcell.Style{
-	tcell.StyleDefault.Foreground(tcell.ColorGreen),  // 0 - Green
-	tcell.StyleDefault.Foreground(tcell.ColorYellow), // 1 - Yellow
-	tcell.StyleDefault.Foreground(tcell.ColorRed),    // 2 - Red
-	tcell.StyleDefault,								  // 3 - standard
-	tcell.StyleDefault.Foreground(tcell.ColorBlue),	  // 4 - Blue
+var StyleList = map[ui.Color]tcell.Style{
+	ui.Green: tcell.StyleDefault.Foreground(tcell.ColorGreen),  // 0 - Green
+	ui.Yellow: tcell.StyleDefault.Foreground(tcell.ColorYellow), // 1 - Yellow
+	ui.Red: tcell.StyleDefault.Foreground(tcell.ColorRed),    // 2 - Red
+	ui.Standard: tcell.StyleDefault,								  // 3 - standard
+	ui.Blue: tcell.StyleDefault.Foreground(tcell.ColorBlue),	  // 4 - Blue
+	ui.StandardBold: tcell.StyleDefault.Bold(true), // standard bold
 }
 
+var StyleAttr = map[ui.CellAttr]tcell.AttrMask {
+	ui.NoAttr: tcell.AttrNone,
+	ui.Bold:	tcell.AttrBold,
+	ui.Dim:	tcell.AttrDim,
+}

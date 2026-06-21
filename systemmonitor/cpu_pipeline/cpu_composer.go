@@ -2,6 +2,7 @@ package cpupipeline
 
 import (
 	"fmt"
+	"unicode/utf8"
 
 	ui "github.com/AndrewRazvanM/System-Monitor/systemmonitor/ui"
 )
@@ -56,7 +57,7 @@ func (cr *CPUReading) Compose(area ui.Geometry) []ui.DrawCommand {
 			Type:  ui.CommandText,
 			X:     x0 + x,
 			Y:     aggY,
-			Data:  "CPU ",
+			Text:  "CPU ",
 			Style: ui.Standard,
 		},
 	)
@@ -67,20 +68,20 @@ func (cr *CPUReading) Compose(area ui.Geometry) []ui.DrawCommand {
 		Type:  ui.CommandText,
 		X:     x0 + x,
 		Y:     aggY,
-		Data:  tempStr,
+		Text:  tempStr,
 		Style: tempStyle,
 	})
-	x += len([]rune(tempStr))
+	x += utf8.RuneCountInString(tempStr)
 
 	loadStr := fmt.Sprintf("%*.1f%%", CpuPadding+2, cr.TotLoad.Load)
 	cmds = append(cmds, ui.DrawCommand{
 		Type:  ui.CommandText,
 		X:     x0 + x,
 		Y:     aggY,
-		Data:  loadStr,
+		Text:  loadStr,
 		Style: loadStyle,
 	})
-	x += len([]rune(loadStr))
+	x += utf8.RuneCountInString(loadStr)
 
 	cmds = append(cmds, ui.DrawCommand{
 		Type:  ui.CommandFill,
@@ -88,7 +89,7 @@ func (cr *CPUReading) Compose(area ui.Geometry) []ui.DrawCommand {
 		Y:     aggY,
 		W:     maxWidth - x,
 		H:     1,
-		Data:  fSkinnyBar,
+		Char:  fSkinnyBar,
 		Style: loadStyle,
 	})
 
@@ -119,33 +120,33 @@ func (cr *CPUReading) Compose(area ui.Geometry) []ui.DrawCommand {
 					Type:  ui.CommandText,
 					X:     x0 + x,
 					Y:     y,
-					Data:  cpuStr,
+					Text:  cpuStr,
 					Style: ui.Standard,
 				},
 			)
-			x += len([]rune(cpuStr))
+			x += utf8.RuneCountInString(cpuStr)
 
 			cmds = append(cmds,
 				ui.DrawCommand{
 					Type:  ui.CommandText,
 					X:     x0 + x,
 					Y:     y,
-					Data:  tempStr,
+					Text:  tempStr,
 					Style: coreTempStyle,
 				},
 			)
-			x += len([]rune(tempStr))
+			x += utf8.RuneCountInString(tempStr)
 
 			cmds = append(cmds,
 				ui.DrawCommand{
 					Type:  ui.CommandText,
 					X:     x0 + x,
 					Y:     y,
-					Data:  loadStr,
+					Text:  loadStr,
 					Style: loadStyle,
 				},
 			)
-			x += len([]rune(loadStr))
+			x += utf8.RuneCountInString(loadStr)
 
 			barWidth := (maxBarWidth * (j + 1)) - x
 
@@ -155,7 +156,7 @@ func (cr *CPUReading) Compose(area ui.Geometry) []ui.DrawCommand {
 				Y:     y,
 				W:     barWidth,
 				H:     1,
-				Data:  fSkinnyBar,
+				Char:  fSkinnyBar,
 				Style: loadStyle,
 			})
 
@@ -167,7 +168,7 @@ func (cr *CPUReading) Compose(area ui.Geometry) []ui.DrawCommand {
 					Type:  ui.CommandRune,
 					X:     x0 + x,
 					Y:     y,
-					Data:  ui.VLine,
+					Char:  ui.VLine,
 					Style: ui.Blue,
 				})
 				x++
@@ -180,7 +181,7 @@ func (cr *CPUReading) Compose(area ui.Geometry) []ui.DrawCommand {
 	return cmds
 }
 
-func cpuLoadStyle (cpuLoad float64) uint8 {
+func cpuLoadStyle (cpuLoad float64) ui.Color {
 	style := ui.Standard
 	switch {
 		case cpuLoad < 50:
@@ -193,7 +194,7 @@ func cpuLoadStyle (cpuLoad float64) uint8 {
 	return style
 }
 
-func cpuTempStyle (temp int32) uint8 {
+func cpuTempStyle (temp int32) ui.Color {
 	style := ui.Standard
 	switch {
 		case temp < 72:

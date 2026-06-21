@@ -9,12 +9,23 @@ const (
 	CommandRune
 )
 
+type Color uint8
+
 const (
-	Green uint8 = 0
-	Yellow uint8 = 1
-	Red uint8 = 2
-	Standard uint8 = 3 // maps to tcell.StyleDefault
-	Blue uint8 = 4
+	Green Color = iota
+	Yellow
+	Red
+	Standard 
+	Blue 
+	StandardBold 
+)
+
+type CellAttr uint8
+
+const (
+	NoAttr CellAttr = iota
+	Bold   
+	Dim    
 )
 
 // Geometry stores the pos on screen (x, y) and size (W, H)
@@ -36,7 +47,7 @@ type Widget struct {
 	//Dirty says if the widget needs to be redrawn
 	Dirty bool
 	//Style stores the style used by the widget
-	Style uint8
+	Style Color
 	//Title contains the widget title
 	Title string
 }
@@ -47,9 +58,12 @@ type DrawCommand struct {
     Type   CommandType // Text, Rect, Bar
     X, Y   int
     W, H   int
-    Data   any
-    Style  uint8
+    Text   string // used when Type == CommandText
+    Char   rune   // used when Type == CommandFill or CommandRune
+    Style  Color
+	Attr    CellAttr// used to change tcell style
 }
+
 //used to build the layout for each widget. Does not handle global layout
 type Composer interface {
 	Compose(area Geometry) []DrawCommand

@@ -6,14 +6,14 @@ const (
     TLCorner = '┌'
     TRCorner = '┐'
     BLCorner = '└'
-    BRCorner = '┘'
+    BRCorner rune = '┘'
 )
 
-func (w *Widget) Initalize(x, y, W, H int, title string, style uint8) {
+func (w *Widget) Initalize(x, y, W, H int, title string, style Color) {
 	w.X, w.Y, w.W, w.H = x, y, W, H
 	w.IsVisible = true
 	w.Style = style
-	w.Title = title
+	w.Title = "┐" + title + "┌"
 }
 
 func (w Widget) Draw() []DrawCommand {
@@ -35,7 +35,7 @@ func (w Widget) Draw() []DrawCommand {
 				Y:     y0,
 				W:     x1 - x0,
 				H:     1,
-				Data:  HLine,
+				Char:  HLine,
 				Style: style,
 			})
 	renderCmds = append(renderCmds, DrawCommand{
@@ -44,7 +44,7 @@ func (w Widget) Draw() []DrawCommand {
 				Y:     y1,
 				W:     x1 - x0,
 				H:     1,
-				Data:  HLine,
+				Char:  HLine,
 				Style: style,
 			})
 
@@ -55,7 +55,7 @@ func (w Widget) Draw() []DrawCommand {
 		Y:     y0,
 		W:     1,
 		H:     y1 - y0,
-		Data:  VLine,
+		Char:  VLine,
 		Style: style,
 	})
 
@@ -65,7 +65,7 @@ func (w Widget) Draw() []DrawCommand {
 		Y:     y0,
 		W:     1,
 		H:     y1 - y0,
-		Data:  VLine,
+		Char:  VLine,
 		Style: style,
 	})
 
@@ -76,7 +76,7 @@ func (w Widget) Draw() []DrawCommand {
 		Y:     y0,
 		W:     1,
 		H:     1,
-		Data:  TLCorner,
+		Char:  TLCorner,
 		Style: style,
 	})
 	renderCmds = append(renderCmds, DrawCommand{
@@ -85,7 +85,7 @@ func (w Widget) Draw() []DrawCommand {
 		Y:     y0,
 		W:     1,
 		H:     1,
-		Data:  TRCorner,
+		Char:  TRCorner,
 		Style: style,
 	})
 	renderCmds = append(renderCmds, DrawCommand{
@@ -94,7 +94,7 @@ func (w Widget) Draw() []DrawCommand {
 		Y:     y1,
 		W:     1,
 		H:     1,
-		Data:  BLCorner,
+		Char:  BLCorner,
 		Style: style,
 	})
 	renderCmds = append(renderCmds, DrawCommand{
@@ -103,8 +103,18 @@ func (w Widget) Draw() []DrawCommand {
 		Y:     y1,
 		W:     1,
 		H:     1,
-		Data:  BRCorner,
+		Char:  BRCorner,
 		Style: style,
+	})
+
+	//draw the title
+	renderCmds = append(renderCmds, DrawCommand{
+		Type: CommandText,
+		X: x0 + 2,
+		Y: y0,
+		Text: w.Title,
+		Style: style,
+		Attr: Bold,
 	})
 
 	return renderCmds

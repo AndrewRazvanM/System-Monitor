@@ -1,9 +1,12 @@
 package renderingsystem
 
-import "github.com/gdamore/tcell/v2"
+import (
+	ui "github.com/AndrewRazvanM/System-Monitor/systemmonitor/ui"
+	"github.com/gdamore/tcell/v2"
+)
 
 //ScreenBuffer is the entire screen
-type ScreenBuffer struct {
+type ScreenBuffer struct {	
 	//Holds current buffer
 	Current Snapshot
 	//Holds previous buffer
@@ -22,7 +25,8 @@ type ScreenBuffer struct {
 // Also contains the position it should be rendered at and it's style
 type Cell struct {
     Rune rune
-    Style uint8
+    Style ui.Color
+	Attribute ui.CellAttr
 }
 
 // Snapshot stores the elements that will be rendered.

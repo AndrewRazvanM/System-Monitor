@@ -18,6 +18,7 @@ import (
 // current snapshot. This method calls Screen.Show();
 func (sb *ScreenBuffer) Render() {
 	styles := StyleList
+	attributes := StyleAttr
 	h := sb.Height
 	w := sb.Width
 	screen := sb.Screen
@@ -29,7 +30,7 @@ func (sb *ScreenBuffer) Render() {
 				continue
 			}
 			cell := sb.Current.Cells[index]
-			screen.SetContent(x, y, cell.Rune, nil, styles[cell.Style])
+			screen.SetContent(x, y, cell.Rune, nil, styles[cell.Style].Attributes(attributes[cell.Attribute]))
 
 			sb.Previous.Cells[index] = cell
 		}	
@@ -46,8 +47,9 @@ func (sb *ScreenBuffer) ProcessCmds(cmds []ui.DrawCommand) {
             sb.writeRunes(
                 c.X,
                 c.Y,
-                []rune(c.Data.(string)),
+                []rune(c.Text),
                 c.Style,
+				c.Attr,
             )
 
         case ui.CommandFill:
@@ -56,31 +58,34 @@ func (sb *ScreenBuffer) ProcessCmds(cmds []ui.DrawCommand) {
                 c.Y,
                 c.W,
                 c.H,
-                c.Data.(rune),
+                c.Char,
                 c.Style,
+				c.Attr,
             )
 
         case ui.CommandRune:
             sb.setCell(
                 c.X,
                 c.Y,
-                c.Data.(rune),
+                c.Char,
                 c.Style,
+				c.Attr,
             )
         }
     }
 }
 // UpdateCell writes a single cell at absolute (x, y).
-func (sb *ScreenBuffer) setCell(x, y int, r rune, style uint8) {
+func (sb *ScreenBuffer) setCell(x, y int, r rune, style ui.Color, attr ui.CellAttr) {
 	if x < 0 || y < 0 || x >= sb.Width || y >= sb.Height {
 		return
 	}
 	index := y*sb.Width + x
 	sb.Current.Cells[index].Rune = r
 	sb.Current.Cells[index].Style = style
+	sb.Current.Cells[index].Attribute = attr
 }
 
-func (sb *ScreenBuffer) writeRunes(x, y int, runes []rune, style uint8) (written int) {
+func (sb *ScreenBuffer) writeRunes(x, y int, runes []rune, style ui.Color, attr ui.CellAttr) (written int) {
 	if x < 0 || y < 0 || y >= sb.Height || x >= sb.Width {
 		return 0
 	}
@@ -93,12 +98,13 @@ func (sb *ScreenBuffer) writeRunes(x, y int, runes []rune, style uint8) (written
 	for i := range max {
 		cells[index+i].Rune = runes[i]
 		cells[index+i].Style = style
+		cells[index+i].Attribute = attr
 	}
 
 	return max
 }
 
-func (sb *ScreenBuffer) fillRect(x, y, w, h int, r rune, style uint8) (written int) {
+func (sb *ScreenBuffer) fillRect(x, y, w, h int, r rune, style ui.Color, attr ui.CellAttr) (written int) {
 	if w <= 0 || h <= 0 {
 		return 0
 	}
@@ -128,6 +134,7 @@ func (sb *ScreenBuffer) fillRect(x, y, w, h int, r rune, style uint8) (written i
 		for col := 0; col < w; col++ {
 			cells[base+col].Rune = r
 			cells[base+col].Style = style
+			cells[base+col].Attribute = attr
 			written++
 		}
 	}
@@ -135,7 +142,7 @@ func (sb *ScreenBuffer) fillRect(x, y, w, h int, r rune, style uint8) (written i
 	return written
 }
 
-func (sb *ScreenBuffer) Clear(r rune, style uint8) {
+func (sb *ScreenBuffer) Clear(r rune, style ui.Color) {
 	cells := sb.Current.Cells
 
 	for i := range cells {
@@ -144,7 +151,7 @@ func (sb *ScreenBuffer) Clear(r rune, style uint8) {
 	}
 }
 
-func (sb *ScreenBuffer) Init(isVisible bool, style uint8) error {
+func (sb *ScreenBuffer) Init(isVisible bool, style ui.Color) error {
 	sb.IsVisible = isVisible
 	screen, sErr := tcell.NewScreen()
 	if sErr != nil {
