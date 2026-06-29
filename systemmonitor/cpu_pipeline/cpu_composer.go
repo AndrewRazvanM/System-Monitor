@@ -22,7 +22,10 @@ const (
 )
 
 
-func (cr *CPUReading) Compose(area layoutmanager.Geometry) []ui.DrawCommand {
+func (cr *CPUReading) Compose(area layoutmanager.Geometry, Visible bool) []ui.DrawCommand {
+	if !Visible{
+		return nil
+	}
 	if len(cr.RawReadings) == 0 {
 		return nil
 	}

@@ -120,10 +120,46 @@ func (w Widget) Draw() []DrawCommand {
 		Attr: Bold,
 	})
 
+	for _, b := range w.Buttons {
+		renderCmds = b.Draw(renderCmds)
+	}
 	return renderCmds
 }
 
 func (w *Widget) UpdatePos(g layoutmanager.Geometry, isVisible bool) {
 	w.Geometry = g
 	w.IsVisible = isVisible
+}
+
+func (b Button) Draw(renderCmds []DrawCommand) []DrawCommand {
+	if !b.Visible {
+		return nil
+	}
+	x0 := b.X
+	y0 := b.Y
+	text := []rune("| " + b.Label + " |")
+
+	renderCmds = append(renderCmds, DrawCommand{
+        Type: CommandText,
+        X: x0,
+        Y: y0,
+		H: 0,
+        Text: text,
+		W: len(text),
+        Style: Blue,
+        Attr: Bold,
+    })
+
+	return renderCmds
+}
+//Button possible behaviours
+
+//Toggles the Widget on and off.
+func ToggleWidget (widget *Widget) {
+	if widget.IsVisible == true {
+		widget.IsVisible = false
+		return
+	}
+
+	widget.IsVisible = true
 }

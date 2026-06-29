@@ -173,10 +173,15 @@ func (sb *ScreenBuffer) Init(isVisible bool, style ui.Color) error {
 	}
 	sb.Screen = screen
 	width, height := screen.Size()
+	//create current and previous buffers
+
 	sb.Current.Cells = make([]Cell, width * height)
 	sb.Previous.Cells = make([]Cell, width * height)
+	
 	sb.Height = height
 	sb.Width = width
+	//enable mouse
+	screen.EnableMouse()
 
 	return nil
 }
