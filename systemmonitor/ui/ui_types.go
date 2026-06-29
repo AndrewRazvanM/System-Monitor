@@ -1,6 +1,8 @@
 package ui
 
-import layoutmanager "github.com/AndrewRazvanM/System-Monitor/systemmonitor/layout_manager"
+import (
+	layoutmanager "github.com/AndrewRazvanM/System-Monitor/systemmonitor/layout_manager"
+)
 
 type CommandType uint8
 
@@ -28,6 +30,17 @@ const (
 	Dim    
 )
 
+type Button struct {
+    Label string
+
+	//stores the position of a button
+	//if it is within a widget, it's position is relative to the widget.
+    layoutmanager.Geometry
+	
+	Visible bool
+	Behavior func()
+}
+
 // Widget stores the position and dimensions for 
 // each dashboard used by the renderer
 type Widget struct {
@@ -36,14 +49,14 @@ type Widget struct {
 	layoutmanager.Geometry
 	//IsVisible says if the widget should show or not
 	IsVisible bool
-	//Dirty says if the widget needs to be redrawn
-	Dirty bool
 	//Style stores the style used by the widget
 	Style Color
 	//Title contains the widget title
 	Title []rune
 	//Tells the layout manager, on which node this widget belongs
 	Node layoutmanager.Node
+	//Lists buttons associated with the widget
+	Buttons []Button
 }
 
 //used by the Composer interface to issue commands to the renderer

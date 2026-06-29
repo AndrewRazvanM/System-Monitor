@@ -126,5 +126,4 @@ func (w Widget) Draw() []DrawCommand {
 func (w *Widget) UpdatePos(g layoutmanager.Geometry, isVisible bool) {
 	w.Geometry = g
 	w.IsVisible = isVisible
-	w.Dirty = true
 }

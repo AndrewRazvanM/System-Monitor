@@ -25,23 +25,28 @@ func main() {
 	cpuWidget := &ui.Widget{}
 	cpuWidget.SetAttributes("CPU", ui.Blue)
 
+	// new widget (skeleton)
+	memWidget := &ui.Widget{}
+	memWidget.SetAttributes("Memory", ui.Green)
 	topRow := &layoutmanager.Split{
 		Direction: layoutmanager.Row,
 		Children: []layoutmanager.Entry{
 			{Node: widget, Weight: 1.0},
+			{Node: memWidget, Weight: 1.0},
+			{Node: cpuWidget, Weight: 1.0},
 		},
 	}
 	root := &layoutmanager.Split{
 		Direction: layoutmanager.Column,
 		Children: []layoutmanager.Entry{
 			{Node: topRow},
-			{Node: cpuWidget},
 		},
 	}
 	root.UpdatePos(layoutmanager.Geometry{X: 0, Y: 0, W: Buffer.Width, H: Buffer.Height}, true)
 
 	Buffer.ProcessCmds(widget.Draw())
 	Buffer.ProcessCmds(cpuWidget.Draw())
+	Buffer.ProcessCmds(memWidget.Draw())
 
 	for {
 		if lErr := rawReadings.GetCPULoad(); lErr != nil {
